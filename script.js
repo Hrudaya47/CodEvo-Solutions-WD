@@ -1,42 +1,40 @@
-document.getElementById('weather-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Get city from the input
-    let city = document.getElementById('city').value.toLowerCase();
+const localVideo = document.getElementById('local-video');
+const remoteVideo = document.getElementById('remote-video');
+const startButton = document.getElementById('start-button');
 
-    // Hardcoded weather data
-    const weatherData = {
-        london: {
-            description: 'Sunny',
-            temperature: 25,
-            humidity: 40
-        },
-        newyork: {
-            description: 'Cloudy',
-            temperature: 22,
-            humidity: 50
-        },
-        mumbai: {
-            description: 'Rainy',
-            temperature: 30,
-            humidity: 70
-        },
-        tokyo: {
-            description: 'Clear Sky',
-            temperature: 20,
-            humidity: 35
-        }
+let localStream;
+let remoteStream;
+let peerConnection;
+
+// ICE server configuration
+const iceServers = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' }, // STUN server
+    ]
+};
+
+// Start call button event listener
+startButton.onclick = async () => {
+    // Get user media (video and audio)
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localVideo.srcObject = localStream;
+
+    // Create peer connection
+    peerConnection = new RTCPeerConnection(iceServers);
+
+    // Add local stream tracks to peer connection
+    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+    // Listen for remote track event
+    peerConnection.ontrack = (event) => {
+        remoteStream = event.streams[0];
+        remoteVideo.srcObject = remoteStream;
     };
 
-    // Display result based on city
-    if (weatherData[city]) {
-        let data = weatherData[city];
-        document.getElementById('weather-result').innerHTML = `
-            <p>Weather in ${city.charAt(0).toUpperCase() + city.slice(1)}: ${data.description}</p>
-            <p>Temperature: ${data.temperature} °C</p>
-            <p>Humidity: ${data.humidity}%</p>
-        `;
-    } else {
-        document.getElementById('weather-result').innerText = 'City not found!';
-    }
-});
+    // Create offer and set local description
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    // Here, you would send the offer to the remote peer (skipped for simplicity)
+    console.log('Offer created and set as local description:', offer);
+};
